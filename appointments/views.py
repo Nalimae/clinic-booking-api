@@ -1,6 +1,6 @@
 
 from datetime import datetime, time, timedelta
-
+from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status
@@ -48,17 +48,32 @@ from .services import (
         ),
     ],
 )
+
 @api_view(["POST"])
 def book_appointment(request):
     serializer = BookingSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
-
-    appointment = create_appointment(**serializer.validated_data)
+    try:
+         appointment = create_appointment(
+            **serializer.validated_data
+        )
+           
+    except IntegrityError:
+        return Response(
+            {
+                "detail": (
+                    "This appointment conflicts with an existing "
+                    "booking. Please choose another time."
+                )
+            },
+            status=status.HTTP_409_CONFLICT,
+        )
 
     return Response(
         AppointmentSerializer(appointment).data,
         status=status.HTTP_201_CREATED,
     )
+
 
 #Check doctor availability
 @extend_schema(
@@ -210,12 +225,26 @@ def reschedule_appointment_view(request, appointment_id):
     serializer = RescheduleSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
 
-    appointment = reschedule_appointment(
-        appointment_id=appointment.id,
-        **serializer.validated_data,
+    try:
+        appointment = reschedule_appointment(
+            appointment_id=appointment.id,
+            **serializer.validated_data,
+        )
+    except IntegrityError:
+        return Response(
+            {
+                "detail": (
+                    "The requested time conflicts with another booking. "
+                    "Please choose another time."
+                )
+            },
+            status=status.HTTP_409_CONFLICT,
+        )
+
+    return Response(
+        AppointmentSerializer(appointment).data
     )
 
-    return Response(AppointmentSerializer(appointment).data)
 
 #List a patient's upcoming appointments
 @extend_schema(

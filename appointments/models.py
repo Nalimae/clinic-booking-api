@@ -2,6 +2,10 @@
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+from django.contrib.postgres.constraints import ExclusionConstraint
+from django.contrib.postgres.fields import DateTimeRangeField
+from django.contrib.postgres.fields.ranges import RangeOperators
+from django.db.models import F, Func, Q, Value
 
 
 class Doctor(models.Model):
@@ -65,6 +69,7 @@ class WorkingHours(models.Model):
             )
 
 
+
 class Appointment(models.Model):
     class Status(models.TextChoices):
         BOOKED = "booked", "Booked"
@@ -82,17 +87,21 @@ class Appointment(models.Model):
     )
     start_at = models.DateTimeField()
     end_at = models.DateTimeField()
+
     status = models.CharField(
         max_length=20,
         choices=Status.choices,
         default=Status.BOOKED,
     )
+
     cancellation_reason = models.TextField(blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ["start_at"]
+
         indexes = [
             models.Index(
                 fields=["doctor", "start_at", "end_at"],
@@ -104,25 +113,78 @@ class Appointment(models.Model):
             ),
         ]
 
+        constraints = [
+            ExclusionConstraint(
+                name="no_overlapping_doctor_appointments",
+                expressions=[
+                    ("doctor", RangeOperators.EQUAL),
+                    (
+                        Func(
+                            F("start_at"),
+                            F("end_at"),
+                            Value("[)"),
+                            function="TSTZRANGE",
+                            output_field=DateTimeRangeField(),
+                        ),
+                        RangeOperators.OVERLAPS,
+                    ),
+                ],
+                condition=Q(status="booked"),
+            ),
+            ExclusionConstraint(
+                name="no_overlapping_patient_appointments",
+                expressions=[
+                    ("patient", RangeOperators.EQUAL),
+                    (
+                        Func(
+                            F("start_at"),
+                            F("end_at"),
+                            Value("[)"),
+                            function="TSTZRANGE",
+                            output_field=DateTimeRangeField(),
+                        ),
+                        RangeOperators.OVERLAPS,
+                    ),
+                ],
+                condition=Q(status="booked"),
+            ),
+        ]
+
     def __str__(self):
         return (
             f"{self.doctor.name} - "
-            f"{self.patient.name} - {self.start_at}"
+            f"{self.patient.name} - "
+            f"{self.start_at}"
         )
 
     def clean(self):
-        if self.start_at >= self.end_at:
-            raise ValidationError(
-                "Appointment end time must be after start time."
-            )
+        super().clean()
 
-        if self.start_at <= timezone.now():
-            raise ValidationError(
-                "Appointments must be scheduled in the future."
-            )
+        if self.start_at and self.end_at:
+            if self.start_at >= self.end_at:
+                raise ValidationError(
+                    {
+                        "end_at": (
+                            "Appointment end time must be after start time."
+                        )
+                    }
+                )
+
+            if self.start_at <= timezone.now():
+                raise ValidationError(
+                    {
+                        "start_at": (
+                            "Appointments must be scheduled in the future."
+                        )
+                    }
+                )
 
         if self.status == self.Status.CANCELLED:
             if not self.cancellation_reason.strip():
                 raise ValidationError(
-                    "A cancellation reason is required."
+                    {
+                        "cancellation_reason": (
+                            "A cancellation reason is required."
+                        )
+                    }
                 )

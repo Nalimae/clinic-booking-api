@@ -1,7 +1,7 @@
 
 from datetime import timedelta
 
-from django.db import IntegrityError, transaction
+from django.db import transaction
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
@@ -52,7 +52,10 @@ def validate_doctor_working_hours(doctor, start_at, end_at):
 
     if local_start.date() != local_end.date():
         raise ValidationError({
-            "end_at": "An appointment must end on the same local date it starts."
+            "end_at": (
+                "An appointment must end on the same local date "
+                "it starts."
+            )
         })
 
     working_hours = WorkingHours.objects.filter(
@@ -68,24 +71,57 @@ def validate_doctor_working_hours(doctor, start_at, end_at):
 
     if not fits_working_hours:
         raise ValidationError({
-            "start_at": "The appointment must fall within the doctor's working hours."
+            "start_at": (
+                "The appointment must fall within the doctor's "
+                "working hours."
+            )
         })
 
 
-def validate_no_overlap(doctor, start_at, end_at, exclude_appointment_id=None):
-    appointments = Appointment.objects.filter(
+def validate_no_overlap(
+    doctor,
+    patient,
+    start_at,
+    end_at,
+    exclude_appointment_id=None,
+):
+    overlapping_doctor_appointments = Appointment.objects.filter(
         doctor=doctor,
         status=Appointment.Status.BOOKED,
         start_at__lt=end_at,
         end_at__gt=start_at,
     )
 
-    if exclude_appointment_id is not None:
-        appointments = appointments.exclude(id=exclude_appointment_id)
+    overlapping_patient_appointments = Appointment.objects.filter(
+        patient=patient,
+        status=Appointment.Status.BOOKED,
+        start_at__lt=end_at,
+        end_at__gt=start_at,
+    )
 
-    if appointments.exists():
+    if exclude_appointment_id is not None:
+        overlapping_doctor_appointments = (
+            overlapping_doctor_appointments.exclude(
+                id=exclude_appointment_id
+            )
+        )
+        overlapping_patient_appointments = (
+            overlapping_patient_appointments.exclude(
+                id=exclude_appointment_id
+            )
+        )
+
+    if overlapping_doctor_appointments.exists():
         raise ValidationError({
-            "start_at": "This appointment slot is already taken."
+            "start_at": "This doctor's appointment slot is already taken."
+        })
+
+    if overlapping_patient_appointments.exists():
+        raise ValidationError({
+            "start_at": (
+                "This patient already has another appointment "
+                "at that time."
+            )
         })
 
 
@@ -93,7 +129,13 @@ def validate_no_overlap(doctor, start_at, end_at, exclude_appointment_id=None):
 def create_appointment(*, doctor, patient, start_at, end_at):
     validate_appointment_time(start_at, end_at)
     validate_doctor_working_hours(doctor, start_at, end_at)
-    validate_no_overlap(doctor, start_at, end_at)
+
+    validate_no_overlap(
+        doctor,
+        patient,
+        start_at,
+        end_at,
+    )
 
     return Appointment.objects.create(
         doctor=doctor,
@@ -116,6 +158,7 @@ def cancel_appointment(*, appointment_id, reason):
 
     appointment.status = Appointment.Status.CANCELLED
     appointment.cancellation_reason = reason.strip()
+
     appointment.save(
         update_fields=[
             "status",
@@ -144,13 +187,16 @@ def reschedule_appointment(
         })
 
     validate_appointment_time(start_at, end_at)
+
     validate_doctor_working_hours(
         appointment.doctor,
         start_at,
         end_at,
     )
+
     validate_no_overlap(
         appointment.doctor,
+        appointment.patient,
         start_at,
         end_at,
         exclude_appointment_id=appointment.id,
@@ -158,6 +204,13 @@ def reschedule_appointment(
 
     appointment.start_at = start_at
     appointment.end_at = end_at
-    appointment.save(update_fields=["start_at", "end_at", "updated_at"])
+
+    appointment.save(
+        update_fields=[
+            "start_at",
+            "end_at",
+            "updated_at",
+        ]
+    )
 
     return appointment
