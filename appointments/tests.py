@@ -304,13 +304,13 @@ class AppointmentAPITests(TestCase):
 
         self.assertEqual(availability_response.status_code, 200)
 
-        available_slots = {
-            (
-                datetime.fromisoformat(slot)
-                if isinstance(slot, str)
-                else slot
-                )
-                for slot in availability_response.data["available_slots"]
-                }
+        available_slots = set()
+
+        for slot in availability_response.data["available_slots"]:
+            slot_start = slot["start_at"]
+            if isinstance(slot_start, str):
+                slot_start = datetime.fromisoformat(slot_start)
+
+            available_slots.add(slot_start)
         self.assertIn(self.start_at, available_slots)
         self.assertNotIn(new_start, available_slots)
