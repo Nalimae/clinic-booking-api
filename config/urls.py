@@ -21,6 +21,7 @@ from drf_spectacular.views import (
     SpectacularAPIView,
     SpectacularSwaggerView,
 )
+from django.http import JsonResponse
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -37,4 +38,14 @@ urlpatterns = [
         SpectacularSwaggerView.as_view(url_name="schema"),
         name="swagger-ui",
     ),
+    path(
+    "",
+    lambda request: JsonResponse({
+        "message": "Clinic Appointment Booking API",
+        "status": "running",
+        "documentation": "/api/docs/",
+        "schema": "/api/schema/",
+    }),
+    name="api-root",
+),
 ]
