@@ -28,7 +28,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install Django djangorestframework "psycopg[binary]" django-environ drf-spectacular pytest pytest-django
+          pip install -r requirements.txt
 
       - name: Run Django system checks
         run: python manage.py check
