@@ -1,0 +1,277 @@
+openapi: 3.0.3
+info:
+  title: Clinic Appointment Booking API
+  version: 1.0.0
+  description: API for doctor availability, appointment booking, cancellation, and
+    rescheduling.
+paths:
+  /api/appointments/:
+    post:
+      operationId: appointments_create
+      description: Book a 30-minute appointment with a doctor.
+      tags:
+      - appointments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Booking'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Booking'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Booking'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Appointment'
+          description: ''
+  /api/appointments/{appointment_id}/cancel/:
+    patch:
+      operationId: appointments_cancel_partial_update
+      description: Cancel an appointment and record the cancellation reason.
+      parameters:
+      - in: path
+        name: appointment_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - appointments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCancellation'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedCancellation'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedCancellation'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Appointment'
+          description: ''
+  /api/appointments/{appointment_id}/reschedule/:
+    patch:
+      operationId: appointments_reschedule_partial_update
+      description: Reschedule an existing appointment to an available slot.
+      parameters:
+      - in: path
+        name: appointment_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - appointments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedReschedule'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedReschedule'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedReschedule'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Appointment'
+          description: ''
+  /api/doctors/{doctor_id}/availability/:
+    get:
+      operationId: doctors_availability_retrieve
+      description: List available 30-minute slots for a doctor on a given date.
+      parameters:
+      - in: query
+        name: date
+        schema:
+          type: string
+          format: date
+        description: Date to check, in YYYY-MM-DD format.
+        required: true
+      - in: path
+        name: doctor_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - doctors
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvailabilityResponse'
+          description: ''
+  /api/patients/{patient_id}/appointments/:
+    get:
+      operationId: patients_appointments_list
+      description: List a patient's upcoming booked appointments, ordered by start
+        time.
+      parameters:
+      - in: path
+        name: patient_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - patients
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Appointment'
+          description: ''
+components:
+  schemas:
+    Appointment:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        doctor:
+          type: integer
+        doctor_name:
+          type: string
+          readOnly: true
+        patient:
+          type: integer
+        patient_name:
+          type: string
+          readOnly: true
+        start_at:
+          type: string
+          format: date-time
+        end_at:
+          type: string
+          format: date-time
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusEnum'
+          readOnly: true
+        cancellation_reason:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - cancellation_reason
+      - created_at
+      - doctor
+      - doctor_name
+      - end_at
+      - id
+      - patient
+      - patient_name
+      - start_at
+      - status
+      - updated_at
+    AvailabilityResponse:
+      type: object
+      properties:
+        doctor_id:
+          type: integer
+        date:
+          type: string
+          format: date
+        available_slots:
+          type: array
+          items:
+            type: string
+            format: date-time
+      required:
+      - available_slots
+      - date
+      - doctor_id
+    Booking:
+      type: object
+      properties:
+        doctor:
+          type: integer
+        patient:
+          type: integer
+        start_at:
+          type: string
+          format: date-time
+        end_at:
+          type: string
+          format: date-time
+      required:
+      - doctor
+      - end_at
+      - patient
+      - start_at
+    PatchedCancellation:
+      type: object
+      properties:
+        reason:
+          type: string
+          maxLength: 1000
+    PatchedReschedule:
+      type: object
+      properties:
+        start_at:
+          type: string
+          format: date-time
+        end_at:
+          type: string
+          format: date-time
+    StatusEnum:
+      enum:
+      - booked
+      - cancelled
+      type: string
+      description: |-
+        * `booked` - Booked
+        * `cancelled` - Cancelled
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid
