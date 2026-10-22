@@ -11,6 +11,15 @@ In this system, it must validate the working hours of doctors, prevent bookings 
 
 The initial implementation leverages Django and Django REST Framework, with PostgreSQL as the required production database. The design of the system considers correctness, maintainability, and the ability to support future growth.
 
+## Live Demo
+
+-   **Live API:** https://clinic-booking-api-zt56.onrender.com/
+-   **Swagger documentation:**
+    https://clinic-booking-api-zt56.onrender.com/api/docs/
+-   **OpenAPI schema:**
+    https://clinic-booking-api-zt56.onrender.com/api/schema/
+-   **Source code:** https://github.com/Nalimae/clinic-booking-api
+
 
 ## Technology Stack
 
@@ -318,7 +327,7 @@ Example request body:
 
 The requested time is validated using the same core rules as a new booking. The original appointment time is excluded from overlap checks so an appointment can be rescheduled without conflicting with itself.
 
-8. Concurrency and Double-Booking Prevention
+## 8. Concurrency and Double-Booking Prevention
 
 Checking whether a slot is available before saving a booking is not sufficient because two requests may attempt to reserve the same time simultaneously.
 
@@ -590,3 +599,19 @@ I made this decision because it is important to have history, and also supports 
 - I decided to verify production database constraints directly.
 
 I checked the deployed PostgreSQL database independently to confirm that the doctor and patient overlap constraints existed. I did not depend on a successful deployment message. I believed in this approach because deployment success does not mean that each migration or database protection has been correctly applied. By Querying PostgreSQL, it generated direct evidence that the intended constraints existed.
+
+
+### Conclusion
+
+AI helped me explore implementation options, troubleshoot problems, and
+improve documentation. However, its output was not treated as proof of
+correctness. I used code review, automated tests, Django checks,
+deployment verification, and direct database inspection to validate the
+implementation. The assessment reinforced the importance of combining
+AI-assisted development with independent technical judgment and
+evidence-based verification.
+
+## License
+
+This project was developed as part of a technical assessment for
+Savannah Informatics.
