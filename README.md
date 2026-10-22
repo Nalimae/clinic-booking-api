@@ -539,6 +539,66 @@ Public URL: https://clinic-booking-api-zt56.onrender.com/
 API documentation: https://clinic-booking-api-zt56.onrender.com/api/docs/
 
 
+## Demo Data for API Testing
+
+The deployed API database contains preloaded sample data for testing and evaluation.
+
+### Available Sample Records
+
+| Resource | Available Records | ID Range |
+| -------- | ----------------: | -------- |
+| Patients |                10 | 1–10     |
+| Doctors  |                 5 | 1–5      |
+
+
+### Doctor Working Hours and Appointment Availability
+
+The sample doctors are configured with the following working schedule:
+
+| Setting | Details |
+| ------- | ------- |
+| Working Days | Monday to Friday |
+| Start Time | 9:00 AM |
+| End Time | 5:00 PM |
+| Appointment Interval | 30 minutes |
+| Weekend Availability | Not available |
+
+**Appointment Scheduling Rules**
+
+- Appointments should be scheduled within the doctor's configured working hours.
+- Each appointment slot is 30 minutes long.
+- Appointments outside working hours or on weekends are not available.
+- Conflicting appointments should be avoided; a doctor cannot be booked for overlapping appointments.
+- Use the existing patient IDs (`1–10`) and doctor IDs (`1–5`) when testing appointment booking.
+
+**Example:** A valid appointment could be scheduled from `09:00 AM` to `09:30 AM` on a weekday, provided the doctor is available.
+
+For the exact request format, required fields, and available API endpoints, refer to the [Swagger API Documentation](https://clinic-booking-api-zt56.onrender.com/api/docs/).
+
+
+### How to Test with the Sample Data
+
+You can use the existing patient and doctor IDs when testing appointment-related endpoints.
+
+**1. Retrieve patients**
+
+Use the patient listing endpoint to view the available sample patients. Patient IDs range from `1` to `10`.
+
+**2. Retrieve doctors**
+
+Use the doctor listing endpoint to view the available sample doctors. Doctor IDs range from `1` to `5`.
+
+**3. Test appointment booking**
+
+When creating an appointment, use an existing patient ID and doctor ID from the database, together with a valid appointment start time and end time.
+
+Example request values:
+
+- `patient`: `1`
+- `doctor`: `1`
+
+These IDs are illustrative examples. Confirm the request body format and required fields using the API documentation.
+
 ## Security Considerations
 
 - Secrets are configured through environment variables rather than source code.
